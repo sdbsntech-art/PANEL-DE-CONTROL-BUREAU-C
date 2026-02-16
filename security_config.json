@@ -1,0 +1,9 @@
+{
+    "security": {
+        "xss_protection": true,
+        "js_obfuscation": true,
+        "anti_copy": true,
+        "admin_email": "seydoubakhayokho1@gmail.com",
+        "admin_key": "147017"
+    }
+}

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Contrôle Sécurisé - Bureau Conseil C</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <!-- Écran de connexion -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-header">
+            <div class="lock-icon">🔐</div>
+            <h1>Accès au Panel</h1>
+            <p>Administrateur ou Visiteur</p>
+        </div>
+        <div class="error-message" id="errorMessage">
+            ❌ Email ou mot de passe incorrect
+        </div>
+        <form id="loginForm">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="adminEmail" required autocomplete="off" placeholder="votre@email.com">
+            </div>
+            <div class="form-group">
+                <label>Mot de passe</label>
+                <input type="password" id="adminPassword" required autocomplete="off">
+            </div>
+            <button type="submit" class="btn-login">🔓 Se connecter</button>
+        </form>
+    </div>
+
+    <!-- Application principale -->
+    <div class="container" id="mainContainer">
+        <div class="header">
+            <div class="header-left">
+                <h1>📋 Panel de Contrôle</h1>
+                <p>Gestion du Bureau Conseil</p>
+            </div>
+            <div class="header-right">
+                <div class="admin-info">
+                    <p>👤 <span id="loggedAdminEmail"></span></p>
+                    <p style="font-size: 0.9em; opacity: 0.8;" id="loggedUserRole">Administrateur</p>
+                </div>
+                <button class="btn-logout" id="logoutBtn">🚪 Déconnexion</button>
+            </div>
+        </div>
+
+        <div class="navigation">
+            <div class="nav-tab active" data-tab="dashboard">📊 Dashboard Général</div>
+            <div class="nav-tab nav-tab-privilege nav-tab-priv-viewMembers" data-tab="management">⚙️ Gestion des Membres</div>
+            <div class="nav-tab nav-tab-privilege nav-tab-priv-comptesRendus" data-tab="comptesRendus">📄 Comptes rendus</div>
+            <div class="nav-tab nav-tab-admin" data-tab="visitors">👥 Comptes visiteur</div>
+        </div>
+
+        <!-- Tab Dashboard Général -->
+        <div class="tab-content active" id="dashboard">
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <h3 id="dashTotalMembers">0</h3>
+                    <p>Membres Totaux</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3 id="dashTitulaires">0</h3>
+                    <p>Membres Titulaires</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3 id="dashElargis">0</h3>
+                    <p>Membres Élargis</p>
+                </div>
+                <div class="dashboard-card">
+                    <h3 id="dashCommissions">5</h3>
+                    <p>Commissions</p>
+                </div>
+            </div>
+
+            <div class="members-overview">
+                <!-- Section Membres Officiels (Titulaires) -->
+                <div class="overview-section">
+                    <div class="overview-header">
+                        <h2>👥 Membres Officiels (Titulaires)</h2>
+                        <span id="countTitulaires" style="font-size: 1.2em;">0 membres</span>
+                    </div>
+                    <table class="members-table" id="tableTitulaires">
+                        <thead>
+                            <tr>
+                                <th>Nom Complet</th>
+                                <th>Commission</th>
+                                <th>Fonction</th>
+                                <th>Section</th>
+                                <th>Téléphone</th>
+                                <th>Email</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyTitulaires">
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Section Membres Élargis -->
+                <div class="overview-section">
+                    <div class="overview-header">
+                        <h2>🌐 Membres Élargis</h2>
+                        <span id="countElargis" style="font-size: 1.2em;">0 membres</span>
+                    </div>
+                    <table class="members-table" id="tableElargis">
+                        <thead>
+                            <tr>
+                                <th>Nom Complet</th>
+                                <th>Commission</th>
+                                <th>Fonction</th>
+                                <th>Section</th>
+                                <th>Téléphone</th>
+                                <th>Email</th>
+                                <th>Statut</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyElargis">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Gestion des Membres -->
+        <div class="tab-content" id="management">
+            <div class="stats-container">
+                <div class="stat-card">
+                    <h3 id="totalMembers">0</h3>
+                    <p>Membres Totaux</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="titulaires">0</h3>
+                    <p>Membres Titulaires</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="elargis">0</h3>
+                    <p>Membres Élargis</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="commissions">5</h3>
+                    <p>Commissions</p>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Rechercher un membre..." autocomplete="off">
+                </div>
+                <div class="filter-buttons">
+                    <button class="btn btn-filter active" data-filter="tous">Tous</button>
+                    <button class="btn btn-filter" data-filter="titulaires">Titulaires</button>
+                    <button class="btn btn-filter" data-filter="elargis">Élargis</button>
+                    <button class="btn btn-filter" data-filter="Points Focaux">Points Focaux</button>
+                    <button class="btn btn-filter" data-filter="Commission Administrative">Comm. Admin</button>
+                    <button class="btn btn-filter" data-filter="CTC">CTC</button>
+                    <button class="btn btn-filter" data-filter="CIPS">CIPS</button>
+                    <button class="btn btn-filter" data-filter="Logistique">Logistique</button>
+                </div>
+                <button class="btn btn-add" id="addMemberBtn">➕ Ajouter</button>
+                <button class="btn btn-export" id="exportBtn">📥 Exporter</button>
+                <button class="btn btn-action" id="sendGroupEmailBtn">📧 Envoyer Email Groupe</button>
+                <button class="btn btn-action" id="sendGroupWhatsappBtn">💬 Envoyer WhatsApp Groupe</button>
+            </div>
+
+            <div class="content" id="content">
+            </div>
+        </div>
+
+        <!-- Tab Comptes visiteur (admin uniquement) -->
+        <div class="tab-content" id="visitors">
+            <div class="content visitors-content">
+                <div class="section-title">
+                    <span>Créer un compte visiteur</span>
+                </div>
+                <p class="visitor-desc">Les visiteurs peuvent consulter le <strong>Dashboard Général</strong>. Vous pouvez leur attribuer des privilèges : voir la gestion des membres, modifier, exporter, ou consulter les comptes rendus PDF. Cliquez sur <strong>Privilèges</strong> pour chaque compte.</p>
+                <form id="visitorForm" class="visitor-form">
+                    <div class="form-row-inline">
+                        <div class="form-group">
+                            <label>Email du visiteur *</label>
+                            <input type="email" id="visitorEmail" required placeholder="visiteur@exemple.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Mot de passe *</label>
+                            <input type="password" id="visitorPassword" required placeholder="Mot de passe de connexion">
+                        </div>
+                        <div class="form-group">
+                            <label>Nom (optionnel)</label>
+                            <input type="text" id="visitorName" placeholder="Nom affiché">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-submit">➕ Créer le compte visiteur</button>
+                    </div>
+                </form>
+                <div class="section-title" style="margin-top: 30px;">
+                    <span>Comptes visiteur existants</span>
+                    <span id="visitorsCount" style="font-size: 0.8em; color: #667eea;">0 compte(s)</span>
+                </div>
+                <div id="visitorsList" class="visitors-list"></div>
+            </div>
+        </div>
+
+        <!-- Tab Comptes rendus (PDF) -->
+        <div class="tab-content" id="comptesRendus">
+            <div class="content comptes-rendus-content">
+                <div class="section-title">
+                    <span>📄 Comptes rendus de réunions</span>
+                </div>
+                <p class="comptes-desc">Les comptes rendus sont enregistrés en PDF et accessibles selon les privilèges des comptes.</p>
+                <div id="comptesRendusAdmin" class="comptes-admin-section">
+                    <div class="section-title" style="margin-top: 20px;">
+                        <span>Déposer un compte rendu</span>
+                    </div>
+                    <form id="compteRenduForm" class="compte-rendu-form">
+                        <div class="form-row-inline">
+                            <div class="form-group">
+                                <label>Titre du compte rendu *</label>
+                                <input type="text" id="crTitre" required placeholder="Ex: Réunion du 15 janvier 2025">
+                            </div>
+                            <div class="form-group">
+                                <label>Date de la réunion</label>
+                                <input type="date" id="crDate">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Fichier PDF *</label>
+                            <input type="file" id="crFile" accept=".pdf" required>
+                            <small class="form-hint">Taille max recommandée : 5 Mo (limite localStorage)</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn-submit">📤 Déposer le compte rendu</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="section-title" style="margin-top: 30px;">
+                    <span>Liste des comptes rendus</span>
+                    <span id="comptesRendusCount" style="font-size: 0.8em; color: #667eea;">0 document(s)</span>
+                </div>
+                <div id="comptesRendusList" class="comptes-rendus-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Membre -->
+    <div class="modal" id="memberModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Ajouter un Membre</h2>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <form id="memberForm">
+                <div class="form-group">
+                    <label>Prénom *</label>
+                    <input type="text" id="prenom" required>
+                </div>
+                <div class="form-group">
+                    <label>Nom *</label>
+                    <input type="text" id="nom" required>
+                </div>
+                <div class="form-group">
+                    <label>Section de rattachement *</label>
+                    <input type="text" id="section" required>
+                </div>
+                <div class="form-group">
+                    <label>Commission *</label>
+                    <select id="commission" required>
+                        <option value="">Sélectionner une commission</option>
+                        <option value="Points Focaux">Points Focaux</option>
+                        <option value="Commission Administrative">Commission Administrative</option>
+                        <option value="CTC">CTC (Commission Technique et de Coordination)</option>
+                        <option value="CIPS">CIPS</option>
+                        <option value="Logistique">Logistique</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Fonction *</label>
+                    <input type="text" id="fonction" required>
+                </div>
+                <div class="form-group">
+                    <label>Type de membre *</label>
+                    <select id="type" required>
+                        <option value="titulaire">Titulaire</option>
+                        <option value="elargi">Élargi</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Numéro de téléphone *</label>
+                    <input type="tel" id="telephone" required>
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">Enregistrer</button>
+                    <button type="button" class="btn-cancel" id="cancelBtn">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Envoi de Groupe -->
+    <div class="modal" id="groupModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="groupModalTitle">Envoyer un message de groupe</h2>
+                <button class="close-modal" id="closeGroupModal">&times;</button>
+            </div>
+            <form id="groupForm">
+                <div class="form-group">
+                    <label>Objet (pour email)</label>
+                    <input type="text" id="groupSubject" placeholder="Objet du message (email)">
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="groupMessage" rows="6" placeholder="Rédigez votre message ici..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-submit" id="groupSendEmail">📧 Envoyer par Email</button>
+                    <button type="button" class="btn-submit" id="groupSendWhatsapp">💬 Envoyer par WhatsApp</button>
+                    <button type="button" class="btn-cancel" id="groupCancel">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Privilèges visiteur -->
+    <div class="modal" id="privilegesModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Privilèges du visiteur</h2>
+                <button class="close-modal" id="closePrivilegesModal">&times;</button>
+            </div>
+            <p class="privileges-visitor-email" id="privilegesVisitorEmail"></p>
+            <form id="privilegesForm">
+                <div class="privileges-checkboxes">
+                    <label class="privilege-check"><input type="checkbox" id="privViewMembers" name="canViewMembers"> Voir la gestion des membres</label>
+                    <label class="privilege-check"><input type="checkbox" id="privEditMembers" name="canEditMembers"> Modifier / supprimer des membres</label>
+                    <label class="privilege-check"><input type="checkbox" id="privExport" name="canExport"> Exporter les données</label>
+                    <label class="privilege-check"><input type="checkbox" id="privViewComptesRendus" name="canViewComptesRendus"> Voir les comptes rendus PDF</label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">Enregistrer les privilèges</button>
+                    <button type="button" class="btn-cancel" id="privilegesCancel">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="security-notice" id="securityNotice">
+        ⚠️ Action non autorisée détectée!
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/security.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
