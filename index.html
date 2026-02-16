@@ -69,7 +69,7 @@
                     <p>Membres Élargis</p>
                 </div>
                 <div class="dashboard-card">
-                    <h3 id="dashCommissions">5</h3>
+                    <h3 id="dashCommissions">7</h3>
                     <p>Commissions</p>
                 </div>
             </div>
@@ -139,7 +139,7 @@
                     <p>Membres Élargis</p>
                 </div>
                 <div class="stat-card">
-                    <h3 id="commissions">5</h3>
+                    <h3 id="commissions">7</h3>
                     <p>Commissions</p>
                 </div>
             </div>
@@ -157,6 +157,8 @@
                     <button class="btn btn-filter" data-filter="CTC">CTC</button>
                     <button class="btn btn-filter" data-filter="CIPS">CIPS</button>
                     <button class="btn btn-filter" data-filter="Logistique">Logistique</button>
+                    <button class="btn btn-filter" data-filter="Soxnas">Soxnas</button>
+                    <button class="btn btn-filter" data-filter="Skils academy">Skils academy</button>
                 </div>
                 <button class="btn btn-add" id="addMemberBtn">➕ Ajouter</button>
                 <button class="btn btn-export" id="exportBtn">📥 Exporter</button>
@@ -227,7 +229,7 @@
                         <div class="form-group">
                             <label>Fichier PDF *</label>
                             <input type="file" id="crFile" accept=".pdf" required>
-                            <small class="form-hint">Taille max recommandée : 5 Mo (limite localStorage)</small>
+                            <small class="form-hint">Taille max par fichier : 2 Mo, limite : 50 comptes rendus au total</small>
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn-submit">📤 Déposer le compte rendu</button>
@@ -272,6 +274,8 @@
                         <option value="CTC">CTC (Commission Technique et de Coordination)</option>
                         <option value="CIPS">CIPS</option>
                         <option value="Logistique">Logistique</option>
+                        <option value="Soxnas">Les Soxnas</option>
+                        <option value="Skils academy">Skils academy</option>
                     </select>
                 </div>
                 <div class="form-group">

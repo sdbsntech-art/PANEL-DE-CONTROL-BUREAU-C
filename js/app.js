@@ -16,7 +16,8 @@ var currentUserRole = "admin"; // "admin" | "visiteur"
 var currentVisitorEmail = null; // email du visiteur connecté (pour lookup des privilèges)
 var VISITORS_STORAGE_KEY = "bureauConseilVisitors";
 var COMPTES_RENDUS_STORAGE_KEY = "bureauConseilComptesRendus";
-var MAX_PDF_SIZE = 5 * 1024 * 1024; // 5 Mo
+var MAX_PDF_SIZE = 2 * 1024 * 1024; // 2 Mo par fichier
+var MAX_COMPTES_RENDUS = 50; // nombre maximum de comptes rendus stockés
 
 // Privilèges par défaut pour un nouveau visiteur
 var DEFAULT_PRIVILEGES = {
@@ -649,9 +650,14 @@ function setupCompteRenduForm() {
             alert("Veuillez remplir le titre et sélectionner un fichier PDF.");
             return;
         }
+        var existingItems = getComptesRendus();
+        if (existingItems.length >= MAX_COMPTES_RENDUS) {
+            alert("La limite de " + MAX_COMPTES_RENDUS + " comptes rendus a été atteinte. Supprimez un document avant d'en ajouter un nouveau.");
+            return;
+        }
         var file = fileInput.files[0];
         if (file.size > MAX_PDF_SIZE) {
-            alert("Fichier trop volumineux (max 5 Mo recommandé).");
+            alert("Fichier trop volumineux (max 2 Mo).");
             return;
         }
         var reader = new FileReader();
