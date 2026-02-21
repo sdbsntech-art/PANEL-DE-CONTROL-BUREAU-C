@@ -42,6 +42,7 @@
                     <p>👤 <span id="loggedAdminEmail"></span></p>
                     <p style="font-size: 0.9em; opacity: 0.8;" id="loggedUserRole">Administrateur</p>
                 </div>
+                <button class="btn-change-password" id="changePasswordBtn">🔑 Changer mot de passe</button>
                 <button class="btn-logout" id="logoutBtn">🚪 Déconnexion</button>
             </div>
         </div>
@@ -51,6 +52,7 @@
             <div class="nav-tab nav-tab-privilege nav-tab-priv-viewMembers" data-tab="management">⚙️ Gestion des Membres</div>
             <div class="nav-tab nav-tab-privilege nav-tab-priv-comptesRendus" data-tab="comptesRendus">📄 Comptes rendus</div>
             <div class="nav-tab nav-tab-admin" data-tab="visitors">👥 Comptes visiteur</div>
+            <div class="nav-tab nav-tab-super-admin" data-tab="admins">👑 Gestion des admins</div>
         </div>
 
         <!-- Tab Dashboard Général -->
@@ -208,6 +210,40 @@
             </div>
         </div>
 
+        <!-- Tab Gestion des admins (super admin uniquement) -->
+        <div class="tab-content" id="admins">
+            <div class="content admins-content">
+                <div class="section-title">
+                    <span>Créer un compte administrateur</span>
+                </div>
+                <p class="visitor-desc">Les administrateurs ont des privilèges que vous définissez. Vous pouvez créer plusieurs admins et contrôler leurs accès. Cliquez sur <strong>Privilèges</strong> pour chaque compte.</p>
+                <form id="adminForm" class="visitor-form">
+                    <div class="form-row-inline">
+                        <div class="form-group">
+                            <label>Email de l'admin *</label>
+                            <input type="email" id="adminFormEmail" required placeholder="admin@exemple.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Mot de passe initial *</label>
+                            <input type="password" id="adminFormPassword" required placeholder="Mot de passe de connexion">
+                        </div>
+                        <div class="form-group">
+                            <label>Nom (optionnel)</label>
+                            <input type="text" id="adminFormName" placeholder="Nom affiché">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-submit">➕ Créer le compte admin</button>
+                    </div>
+                </form>
+                <div class="section-title" style="margin-top: 30px;">
+                    <span>Comptes administrateur</span>
+                    <span id="adminsCount" style="font-size: 0.8em; color: #667eea;">0 compte(s)</span>
+                </div>
+                <div id="adminsList" class="visitors-list"></div>
+            </div>
+        </div>
+
         <!-- Tab Comptes rendus (PDF) -->
         <div class="tab-content" id="comptesRendus">
             <div class="content comptes-rendus-content">
@@ -329,6 +365,57 @@
                     <button type="button" class="btn-submit" id="groupSendEmail">📧 Envoyer par Email</button>
                     <button type="button" class="btn-submit" id="groupSendWhatsapp">💬 Envoyer par WhatsApp</button>
                     <button type="button" class="btn-cancel" id="groupCancel">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Privilèges admin -->
+    <div class="modal" id="adminPrivilegesModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Privilèges de l'administrateur</h2>
+                <button class="close-modal" id="closeAdminPrivilegesModal">&times;</button>
+            </div>
+            <p class="privileges-visitor-email" id="adminPrivilegesEmail"></p>
+            <form id="adminPrivilegesForm">
+                <div class="privileges-checkboxes">
+                    <label class="privilege-check"><input type="checkbox" id="adminPrivManageMembers" name="canManageMembers"> Gérer les membres (voir, ajouter, modifier, supprimer)</label>
+                    <label class="privilege-check"><input type="checkbox" id="adminPrivManageVisitors" name="canManageVisitors"> Gérer les comptes visiteurs</label>
+                    <label class="privilege-check"><input type="checkbox" id="adminPrivManageComptesRendus" name="canManageComptesRendus"> Gérer les comptes rendus (déposer, supprimer)</label>
+                    <label class="privilege-check"><input type="checkbox" id="adminPrivExport" name="canExport"> Exporter les données</label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">Enregistrer les privilèges</button>
+                    <button type="button" class="btn-cancel" id="adminPrivilegesCancel">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Changer mot de passe -->
+    <div class="modal" id="changePasswordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔑 Changer mon mot de passe</h2>
+                <button class="close-modal" id="closeChangePasswordModal">&times;</button>
+            </div>
+            <form id="changePasswordForm">
+                <div class="form-group">
+                    <label>Mot de passe actuel *</label>
+                    <input type="password" id="changePwdCurrent" required placeholder="Entrez votre mot de passe actuel">
+                </div>
+                <div class="form-group">
+                    <label>Nouveau mot de passe *</label>
+                    <input type="password" id="changePwdNew" required placeholder="Nouveau mot de passe" minlength="4">
+                </div>
+                <div class="form-group">
+                    <label>Confirmer le nouveau mot de passe *</label>
+                    <input type="password" id="changePwdConfirm" required placeholder="Confirmer le nouveau mot de passe">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">Modifier le mot de passe</button>
+                    <button type="button" class="btn-cancel" id="changePasswordCancel">Annuler</button>
                 </div>
             </form>
         </div>

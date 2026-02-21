@@ -234,6 +234,21 @@ body {
     margin-bottom: 10px;
 }
 
+.btn-change-password {
+    padding: 10px 20px;
+    background: var(--info);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.btn-change-password:hover {
+    background: var(--info-hover);
+}
+
 .btn-logout {
     padding: 10px 25px;
     background: var(--danger);
@@ -1313,9 +1328,12 @@ body {
         font-size: 0.85em;
     }
 
+    .btn-change-password,
     .btn-logout {
         width: 100%;
         padding: 12px;
+        margin-right: 0;
+        margin-bottom: 5px;
     }
 
     .form-actions {

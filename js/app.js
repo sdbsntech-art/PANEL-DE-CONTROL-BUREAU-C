@@ -12,12 +12,13 @@ var currentFilter = "tous";
 var loginAttempts = 0;
 var MAX_ATTEMPTS = 7;
 var isAuthenticated = false;
-var currentUserRole = "admin"; // "admin" | "visiteur"
-var currentVisitorEmail = null; // email du visiteur connecté (pour lookup des privilèges)
+var currentUserRole = "admin"; // "super_admin" | "admin" | "visiteur"
+var currentUserEmail = null;   // email de l'utilisateur connecté (visiteur ou admin)
 var VISITORS_STORAGE_KEY = "bureauConseilVisitors";
+var ADMINS_STORAGE_KEY = "bureauConseilAdmins";
 var COMPTES_RENDUS_STORAGE_KEY = "bureauConseilComptesRendus";
 var MAX_PDF_SIZE = 2 * 1024 * 1024; // 2 Mo par fichier
-var MAX_COMPTES_RENDUS = 50; // nombre maximum de comptes rendus stockés
+var MAX_COMPTES_RENDUS = 70; // nombre maximum de comptes rendus stockés
 
 // Privilèges par défaut pour un nouveau visiteur
 var DEFAULT_PRIVILEGES = {
@@ -25,6 +26,14 @@ var DEFAULT_PRIVILEGES = {
     canEditMembers: false,
     canExport: false,
     canViewComptesRendus: false
+};
+
+// Privilèges par défaut pour un nouvel admin (assignés par super admin)
+var DEFAULT_ADMIN_PRIVILEGES = {
+    canManageMembers: false,
+    canManageVisitors: false,
+    canManageComptesRendus: false,
+    canExport: false
 };
 
 function sha256(message) {
@@ -63,6 +72,28 @@ function saveVisitors(visitors) {
     localStorage.setItem(VISITORS_STORAGE_KEY, JSON.stringify(visitors));
 }
 
+function getAdmins() {
+    var raw = localStorage.getItem(ADMINS_STORAGE_KEY);
+    var admins = raw ? JSON.parse(raw) : [];
+    var changed = false;
+    admins.forEach(function (a) {
+        if (!a.privileges) {
+            a.privileges = JSON.parse(JSON.stringify(DEFAULT_ADMIN_PRIVILEGES));
+            changed = true;
+        }
+    });
+    if (changed) saveAdmins(admins);
+    return admins;
+}
+
+function saveAdmins(admins) {
+    localStorage.setItem(ADMINS_STORAGE_KEY, JSON.stringify(admins));
+}
+
+function isSuperAdmin() {
+    return currentUserRole === "super_admin";
+}
+
 function getComptesRendus() {
     var raw = localStorage.getItem(COMPTES_RENDUS_STORAGE_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -72,40 +103,65 @@ function saveComptesRendus(data) {
     localStorage.setItem(COMPTES_RENDUS_STORAGE_KEY, JSON.stringify(data));
 }
 
+function getCurrentAdminPrivileges() {
+    if (isSuperAdmin()) return { canManageMembers: true, canManageVisitors: true, canManageComptesRendus: true, canExport: true };
+    if (currentUserRole !== "admin" || !currentUserEmail) return DEFAULT_ADMIN_PRIVILEGES;
+    var admins = getAdmins();
+    var a = admins.find(function (x) { return x.email === currentUserEmail; });
+    if (!a) return DEFAULT_ADMIN_PRIVILEGES;
+    return a.privileges || DEFAULT_ADMIN_PRIVILEGES;
+}
+
 function getCurrentVisitorPrivileges() {
-    if (currentUserRole === "admin") return { canViewMembers: true, canEditMembers: true, canExport: true, canViewComptesRendus: true };
-    if (!currentVisitorEmail) return DEFAULT_PRIVILEGES;
+    if (currentUserRole === "super_admin" || currentUserRole === "admin") {
+        var ap = getCurrentAdminPrivileges();
+        return {
+            canViewMembers: ap.canManageMembers,
+            canEditMembers: ap.canManageMembers,
+            canExport: ap.canExport,
+            canViewComptesRendus: ap.canManageComptesRendus
+        };
+    }
+    if (!currentUserEmail) return DEFAULT_PRIVILEGES;
     var visitors = getVisitors();
-    var v = visitors.find(function (x) { return x.email === currentVisitorEmail; });
+    var v = visitors.find(function (x) { return x.email === currentUserEmail; });
     if (!v) return DEFAULT_PRIVILEGES;
     return v.privileges || DEFAULT_PRIVILEGES;
 }
 
 function applyRoleUI() {
     var roleEl = document.getElementById("loggedUserRole");
-    if (roleEl) roleEl.textContent = currentUserRole === "admin" ? "Administrateur" : "Visiteur";
+    if (roleEl) {
+        if (currentUserRole === "super_admin") roleEl.textContent = "Super Administrateur";
+        else if (currentUserRole === "admin") roleEl.textContent = "Administrateur";
+        else roleEl.textContent = "Visiteur";
+    }
     var adminTabs = document.querySelectorAll(".nav-tab-admin");
+    var canManageVisitors = isSuperAdmin() || getCurrentAdminPrivileges().canManageVisitors;
     adminTabs.forEach(function (tab) {
-        tab.style.display = currentUserRole === "admin" ? "" : "none";
+        tab.style.display = (currentUserRole === "super_admin" || canManageVisitors) ? "" : "none";
+    });
+    var superAdminTabs = document.querySelectorAll(".nav-tab-super-admin");
+    superAdminTabs.forEach(function (tab) {
+        tab.style.display = isSuperAdmin() ? "" : "none";
     });
     var priv = getCurrentVisitorPrivileges();
-    // Onglets basés sur les privilèges (pour visiteurs)
     var tabViewMembers = document.querySelector(".nav-tab-priv-viewMembers");
     var tabComptesRendus = document.querySelector(".nav-tab-priv-comptesRendus");
-    if (tabViewMembers) tabViewMembers.style.display = (currentUserRole === "admin" || priv.canViewMembers) ? "" : "none";
-    if (tabComptesRendus) tabComptesRendus.style.display = (currentUserRole === "admin" || priv.canViewComptesRendus) ? "" : "none";
-    // Masquer section dépôt comptes rendus pour visiteurs
+    if (tabViewMembers) tabViewMembers.style.display = ((currentUserRole === "admin" || currentUserRole === "super_admin") || priv.canViewMembers) ? "" : "none";
+    if (tabComptesRendus) tabComptesRendus.style.display = ((currentUserRole === "admin" || currentUserRole === "super_admin") || priv.canViewComptesRendus) ? "" : "none";
     var crAdmin = document.getElementById("comptesRendusAdmin");
-    if (crAdmin) crAdmin.style.display = currentUserRole === "admin" ? "" : "none";
-    // Boutons Gestion des Membres selon privilèges
+    var canManageCR = isSuperAdmin() || getCurrentAdminPrivileges().canManageComptesRendus;
+    if (crAdmin) crAdmin.style.display = canManageCR ? "" : "none";
     var addBtn = document.getElementById("addMemberBtn");
     var exportBtn = document.getElementById("exportBtn");
     var sendEmailBtn = document.getElementById("sendGroupEmailBtn");
     var sendWhatsappBtn = document.getElementById("sendGroupWhatsappBtn");
-    if (addBtn) addBtn.style.display = (currentUserRole === "admin" || priv.canEditMembers) ? "" : "none";
-    if (exportBtn) exportBtn.style.display = (currentUserRole === "admin" || priv.canExport) ? "" : "none";
-    if (sendEmailBtn) sendEmailBtn.style.display = (currentUserRole === "admin" || priv.canEditMembers) ? "" : "none";
-    if (sendWhatsappBtn) sendWhatsappBtn.style.display = (currentUserRole === "admin" || priv.canEditMembers) ? "" : "none";
+    var canEditMembers = (currentUserRole === "admin" || currentUserRole === "super_admin" || priv.canEditMembers);
+    if (addBtn) addBtn.style.display = canEditMembers ? "" : "none";
+    if (exportBtn) exportBtn.style.display = ((currentUserRole === "admin" || currentUserRole === "super_admin") || priv.canExport) ? "" : "none";
+    if (sendEmailBtn) sendEmailBtn.style.display = canEditMembers ? "" : "none";
+    if (sendWhatsappBtn) sendWhatsappBtn.style.display = canEditMembers ? "" : "none";
 }
 
 function renderVisitors() {
@@ -198,7 +254,7 @@ function renderComptesRendus() {
             "<div class=\"compte-rendu-actions\">" +
             "<button type=\"button\" class=\"btn-view-cr\" data-id=\"" + cr.id + "\">👁 Voir</button>" +
             "<button type=\"button\" class=\"btn-download-cr\" data-id=\"" + cr.id + "\">📥 Télécharger</button>" +
-            (currentUserRole === "admin" ? "<button type=\"button\" class=\"btn-delete-cr\" data-id=\"" + cr.id + "\">🗑 Supprimer</button>" : "") +
+            ((isSuperAdmin() || getCurrentAdminPrivileges().canManageComptesRendus) ? "<button type=\"button\" class=\"btn-delete-cr\" data-id=\"" + cr.id + "\">🗑 Supprimer</button>" : "") +
             "</div></div>";
     }).join("");
     list.querySelectorAll(".btn-view-cr").forEach(function (btn) {
@@ -276,6 +332,101 @@ function deleteVisitor(id) {
     var visitors = getVisitors().filter(function (v) { return v.id !== id; });
     saveVisitors(visitors);
     renderVisitors();
+}
+
+function addAdmin(email, passwordHash, nom) {
+    var admins = getAdmins();
+    var newId = admins.length > 0 ? Math.max.apply(null, admins.map(function (a) { return a.id; })) + 1 : 1;
+    admins.push({
+        id: newId,
+        email: email.trim().toLowerCase(),
+        passwordHash: passwordHash,
+        nom: (nom || "").trim(),
+        privileges: JSON.parse(JSON.stringify(DEFAULT_ADMIN_PRIVILEGES))
+    });
+    saveAdmins(admins);
+    renderAdmins();
+}
+
+function deleteAdmin(id) {
+    if (!confirm("Supprimer ce compte administrateur ?")) return;
+    var admins = getAdmins().filter(function (a) { return a.id !== id; });
+    saveAdmins(admins);
+    renderAdmins();
+}
+
+var adminPrivilegesEditingId = null;
+
+function openAdminPrivilegesModal(adminId) {
+    var admins = getAdmins();
+    var a = admins.find(function (x) { return x.id === adminId; });
+    if (!a) return;
+    adminPrivilegesEditingId = adminId;
+    document.getElementById("adminPrivilegesEmail").textContent = a.email;
+    var privs = a.privileges || DEFAULT_ADMIN_PRIVILEGES;
+    document.getElementById("adminPrivManageMembers").checked = !!privs.canManageMembers;
+    document.getElementById("adminPrivManageVisitors").checked = !!privs.canManageVisitors;
+    document.getElementById("adminPrivManageComptesRendus").checked = !!privs.canManageComptesRendus;
+    document.getElementById("adminPrivExport").checked = !!privs.canExport;
+    document.getElementById("adminPrivilegesModal").classList.add("active");
+}
+
+function closeAdminPrivilegesModal() {
+    document.getElementById("adminPrivilegesModal").classList.remove("active");
+    adminPrivilegesEditingId = null;
+}
+
+function saveAdminPrivileges(e) {
+    e.preventDefault();
+    if (adminPrivilegesEditingId == null) return;
+    var admins = getAdmins();
+    var idx = admins.findIndex(function (x) { return x.id === adminPrivilegesEditingId; });
+    if (idx === -1) return;
+    admins[idx].privileges = {
+        canManageMembers: document.getElementById("adminPrivManageMembers").checked,
+        canManageVisitors: document.getElementById("adminPrivManageVisitors").checked,
+        canManageComptesRendus: document.getElementById("adminPrivManageComptesRendus").checked,
+        canExport: document.getElementById("adminPrivExport").checked
+    };
+    saveAdmins(admins);
+    renderAdmins();
+    applyRoleUI();
+    closeAdminPrivilegesModal();
+}
+
+function renderAdmins() {
+    var list = document.getElementById("adminsList");
+    var countEl = document.getElementById("adminsCount");
+    if (!list) return;
+    var admins = getAdmins();
+    if (countEl) countEl.textContent = admins.length + " compte(s)";
+    if (admins.length === 0) {
+        list.innerHTML = "<p class=\"empty-state\" style=\"padding: 30px; color: #999;\">Aucun compte administrateur. Créez-en un avec le formulaire ci-dessus.</p>";
+        return;
+    }
+    list.innerHTML = admins.map(function (a) {
+        var label = (a.nom && a.nom.trim()) ? a.nom.trim() : a.email;
+        var privs = a.privileges || DEFAULT_ADMIN_PRIVILEGES;
+        var privLabel = [];
+        if (privs.canManageMembers) privLabel.push("Membres");
+        if (privs.canManageVisitors) privLabel.push("Visiteurs");
+        if (privs.canManageComptesRendus) privLabel.push("CR");
+        if (privs.canExport) privLabel.push("Export");
+        var privText = privLabel.length ? " [" + privLabel.join(", ") + "]" : " [Aucun]";
+        return "<div class=\"visitor-item\" data-id=\"" + a.id + "\">" +
+            "<div class=\"visitor-item-info\"><strong>" + label + "</strong><br><span>" + a.email + "</span><br><small style=\"color:#999;\">Privilèges:" + privText + "</small></div>" +
+            "<div><button type=\"button\" class=\"btn-privileges-visitor\" data-id=\"" + a.id + "\">⚙️ Privilèges</button> <button type=\"button\" class=\"btn-remove-visitor\" data-id=\"" + a.id + "\">Supprimer</button></div></div>";
+    }).join("");
+    list.querySelectorAll(".btn-remove-visitor").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            deleteAdmin(parseInt(btn.getAttribute("data-id"), 10));
+        });
+    });
+    list.querySelectorAll(".btn-privileges-visitor").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            openAdminPrivilegesModal(parseInt(btn.getAttribute("data-id"), 10));
+        });
+    });
 }
 
 function updateAllStats() {
@@ -559,7 +710,7 @@ function deleteMember(id) {
 }
 
 function exportData() {
-    if (currentUserRole !== "admin" && !getCurrentVisitorPrivileges().canExport) {
+    if ((currentUserRole !== "admin" && currentUserRole !== "super_admin") && !getCurrentVisitorPrivileges().canExport) {
         alert("Vous n'avez pas le privilège d'exporter les données.");
         return;
     }
@@ -628,10 +779,20 @@ function initAfterLogin() {
     renderComptesRendus();
     setupCompteRenduForm();
     setupPrivilegesModal();
-    if (currentUserRole === "admin") {
+    setupChangePasswordModal();
+    if (isSuperAdmin()) {
+        renderMembers();
+        renderVisitors();
+        renderAdmins();
+        setupVisitorForm();
+        setupAdminForm();
+        setupAdminPrivilegesModal();
+    } else if (currentUserRole === "admin" && getCurrentAdminPrivileges().canManageVisitors) {
         renderMembers();
         renderVisitors();
         setupVisitorForm();
+    } else if (currentUserRole === "admin") {
+        renderMembers();
     } else {
         var priv = getCurrentVisitorPrivileges();
         if (priv.canViewMembers) renderMembers();
@@ -702,19 +863,170 @@ function setupVisitorForm() {
             alert("Veuillez remplir l'email et le mot de passe.");
             return;
         }
+        var config = window.ADMIN_CONFIG || {};
+        if (email.toLowerCase() === (config.email || "").toLowerCase()) {
+            alert("Cet email est réservé au super administrateur.");
+            return;
+        }
         var visitors = getVisitors();
         if (visitors.some(function (v) { return v.email === email.toLowerCase(); })) {
             alert("Un compte visiteur avec cet email existe déjà.");
             return;
         }
+        var admins = getAdmins();
+        if (admins.some(function (a) { return a.email === email.toLowerCase(); })) {
+            alert("Un compte admin utilise déjà cet email.");
+            return;
+        }
         sha256(password).then(function (passwordHash) {
             addVisitor(email, passwordHash, nom);
             form.reset();
+            alert("Compte visiteur créé. L'utilisateur pourra modifier son mot de passe après connexion.");
         });
     });
 }
 
-// Connexion (admin ou visiteur)
+function setupAdminForm() {
+    var form = document.getElementById("adminForm");
+    if (!form) return;
+    form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var emailInput = document.getElementById("adminFormEmail");
+        var passwordInput = document.getElementById("adminFormPassword");
+        var nameInput = document.getElementById("adminFormName");
+        var email = (emailInput && emailInput.value) ? emailInput.value.trim().toLowerCase() : "";
+        var password = (passwordInput && passwordInput.value) ? passwordInput.value : "";
+        var nom = (nameInput && nameInput.value) ? nameInput.value.trim() : "";
+        if (!email || !password) {
+            alert("Veuillez remplir l'email et le mot de passe.");
+            return;
+        }
+        var config = window.ADMIN_CONFIG || {};
+        if (email === (config.email || "").toLowerCase()) {
+            alert("Cet email est réservé au super administrateur. Utilisez un autre email.");
+            return;
+        }
+        var admins = getAdmins();
+        if (admins.some(function (a) { return a.email === email; })) {
+            alert("Un compte admin avec cet email existe déjà.");
+            return;
+        }
+        var visitors = getVisitors();
+        if (visitors.some(function (v) { return v.email === email; })) {
+            alert("Un compte visiteur utilise déjà cet email. Supprimez-le d'abord si vous voulez en faire un admin.");
+            return;
+        }
+        sha256(password).then(function (passwordHash) {
+            addAdmin(emailInput.value.trim(), passwordHash, nom);
+            form.reset();
+            alert("Compte admin créé. L'administrateur pourra modifier son mot de passe après connexion.");
+        });
+    });
+}
+
+function setupAdminPrivilegesModal() {
+    var closeBtn = document.getElementById("closeAdminPrivilegesModal");
+    var cancelBtn = document.getElementById("adminPrivilegesCancel");
+    var form = document.getElementById("adminPrivilegesForm");
+    if (closeBtn) closeBtn.addEventListener("click", closeAdminPrivilegesModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", closeAdminPrivilegesModal);
+    if (form) form.addEventListener("submit", saveAdminPrivileges);
+    var modal = document.getElementById("adminPrivilegesModal");
+    if (modal) {
+        modal.addEventListener("click", function (e) {
+            if (e.target === modal) closeAdminPrivilegesModal();
+        });
+    }
+}
+
+function openChangePasswordModal() {
+    document.getElementById("changePwdCurrent").value = "";
+    document.getElementById("changePwdNew").value = "";
+    document.getElementById("changePwdConfirm").value = "";
+    document.getElementById("changePasswordModal").classList.add("active");
+}
+
+function closeChangePasswordModal() {
+    document.getElementById("changePasswordModal").classList.remove("active");
+}
+
+function handleChangePassword(e) {
+    e.preventDefault();
+    var current = document.getElementById("changePwdCurrent").value;
+    var newPwd = document.getElementById("changePwdNew").value;
+    var confirmPwd = document.getElementById("changePwdConfirm").value;
+    if (newPwd.length < 4) {
+        alert("Le nouveau mot de passe doit contenir au moins 4 caractères.");
+        return;
+    }
+    if (newPwd !== confirmPwd) {
+        alert("Les deux nouveaux mots de passe ne correspondent pas.");
+        return;
+    }
+    sha256(current).then(function (currentHash) {
+        var config = window.ADMIN_CONFIG || {};
+        if (currentUserRole === "super_admin" && currentUserEmail === (config.email || "").toLowerCase()) {
+            if (currentHash !== config.passwordHash) {
+                alert("Mot de passe actuel incorrect.");
+                return;
+            }
+            sha256(newPwd).then(function (newHash) {
+                alert("Pour enregistrer le nouveau mot de passe du super admin :\n\n1. Ouvrez le fichier config.js\n2. Remplacez la valeur de 'passwordHash' par :\n\n" + newHash + "\n\nLe changement sera effectif après sauvegarde du fichier.");
+                console.log("Nouveau hash pour config.js (super admin): " + newHash);
+                closeChangePasswordModal();
+            });
+            return;
+        }
+        if (currentUserRole === "admin") {
+            var admins = getAdmins();
+            var a = admins.find(function (x) { return x.email === currentUserEmail; });
+            if (!a || a.passwordHash !== currentHash) {
+                alert("Mot de passe actuel incorrect.");
+                return;
+            }
+            sha256(newPwd).then(function (newHash) {
+                a.passwordHash = newHash;
+                saveAdmins(admins);
+                alert("Mot de passe modifié avec succès.");
+                closeChangePasswordModal();
+            });
+            return;
+        }
+        if (currentUserRole === "visiteur") {
+            var visitors = getVisitors();
+            var v = visitors.find(function (x) { return x.email === currentUserEmail; });
+            if (!v || v.passwordHash !== currentHash) {
+                alert("Mot de passe actuel incorrect.");
+                return;
+            }
+            sha256(newPwd).then(function (newHash) {
+                v.passwordHash = newHash;
+                saveVisitors(visitors);
+                alert("Mot de passe modifié avec succès.");
+                closeChangePasswordModal();
+            });
+        }
+    });
+}
+
+function setupChangePasswordModal() {
+    var btn = document.getElementById("changePasswordBtn");
+    if (btn) btn.addEventListener("click", openChangePasswordModal);
+    var closeBtn = document.getElementById("closeChangePasswordModal");
+    var cancelBtn = document.getElementById("changePasswordCancel");
+    var form = document.getElementById("changePasswordForm");
+    if (closeBtn) closeBtn.addEventListener("click", closeChangePasswordModal);
+    if (cancelBtn) cancelBtn.addEventListener("click", closeChangePasswordModal);
+    if (form) form.addEventListener("submit", handleChangePassword);
+    var modal = document.getElementById("changePasswordModal");
+    if (modal) {
+        modal.addEventListener("click", function (e) {
+            if (e.target === modal) closeChangePasswordModal();
+        });
+    }
+}
+
+// Connexion (super admin, admin ou visiteur)
 document.getElementById("loginForm").addEventListener("submit", function (e) {
     e.preventDefault();
     if (loginAttempts >= MAX_ATTEMPTS) {
@@ -727,8 +1039,8 @@ document.getElementById("loginForm").addEventListener("submit", function (e) {
     var config = window.ADMIN_CONFIG || {};
     sha256(password).then(function (passwordHash) {
         if (email === (config.email || "").toLowerCase() && passwordHash === config.passwordHash) {
-            currentUserRole = "admin";
-            currentVisitorEmail = null;
+            currentUserRole = "super_admin";
+            currentUserEmail = email;
             isAuthenticated = true;
             loginAttempts = 0;
             document.getElementById("loginContainer").style.display = "none";
@@ -738,11 +1050,26 @@ document.getElementById("loginForm").addEventListener("submit", function (e) {
             initAfterLogin();
             return;
         }
+        var admins = getAdmins();
+        for (var i = 0; i < admins.length; i++) {
+            if (admins[i].email === email && admins[i].passwordHash === passwordHash) {
+                currentUserRole = "admin";
+                currentUserEmail = admins[i].email;
+                isAuthenticated = true;
+                loginAttempts = 0;
+                document.getElementById("loginContainer").style.display = "none";
+                document.getElementById("mainContainer").classList.add("active");
+                var loggedEl = document.getElementById("loggedAdminEmail");
+                if (loggedEl) loggedEl.textContent = (admins[i].nom && admins[i].nom.trim()) ? admins[i].nom.trim() : admins[i].email;
+                initAfterLogin();
+                return;
+            }
+        }
         var visitors = getVisitors();
         for (var i = 0; i < visitors.length; i++) {
             if (visitors[i].email === email && visitors[i].passwordHash === passwordHash) {
                 currentUserRole = "visiteur";
-                currentVisitorEmail = visitors[i].email;
+                currentUserEmail = visitors[i].email;
                 isAuthenticated = true;
                 loginAttempts = 0;
                 document.getElementById("loginContainer").style.display = "none";
@@ -766,7 +1093,7 @@ document.getElementById("logoutBtn").addEventListener("click", function () {
     if (confirm("Voulez-vous vraiment vous déconnecter ?")) {
         isAuthenticated = false;
         currentUserRole = "admin";
-        currentVisitorEmail = null;
+        currentUserEmail = null;
         document.getElementById("mainContainer").classList.remove("active");
         document.getElementById("loginContainer").style.display = "block";
         document.getElementById("loginForm").reset();
